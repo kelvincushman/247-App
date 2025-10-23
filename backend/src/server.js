@@ -13,6 +13,9 @@ const swaggerSpec = require('./config/swagger');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
+const customerProfileRoutes = require('./routes/customerProfileRoutes');
+const tradespersonProfileRoutes = require('./routes/tradespersonProfileRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Initialize express app
 const app = express();
@@ -69,6 +72,9 @@ app.use(`/api/${API_VERSION}/docs`, swaggerUi.serve, swaggerUi.setup(swaggerSpec
 }));
 
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
+app.use(`/api/${API_VERSION}/profiles/customer`, customerProfileRoutes);
+app.use(`/api/${API_VERSION}/profiles/tradesperson`, tradespersonProfileRoutes);
+app.use(`/api/${API_VERSION}/admin`, adminRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
