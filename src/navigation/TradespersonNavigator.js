@@ -8,6 +8,7 @@ import MyJobsScreen from '../screens/tradesperson/MyJobsScreen';
 import MessagesScreen from '../screens/tradesperson/MessagesScreen';
 import ProfileScreen from '../screens/tradesperson/ProfileScreen';
 import JobDetailsScreen from '../screens/tradesperson/JobDetailsScreen';
+import ConversationScreen from '../screens/shared/ConversationScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -103,6 +104,14 @@ const TradespersonNavigator = () => {
         component={JobDetailsScreen}
         options={{
           title: 'Job Details',
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="Conversation"
+        component={ConversationScreen}
+        options={{
+          title: 'Chat',
           presentation: 'card',
         }}
       />
