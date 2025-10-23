@@ -7,6 +7,7 @@ import JobsScreen from '../screens/customer/JobsScreen';
 import MessagesScreen from '../screens/customer/MessagesScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
 import CreateJobScreen from '../screens/customer/CreateJobScreen';
+import JobDetailsScreen from '../screens/customer/JobDetailsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -94,6 +95,14 @@ const CustomerNavigator = () => {
         component={CreateJobScreen}
         options={{
           title: 'Create Job Request',
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="JobDetails"
+        component={JobDetailsScreen}
+        options={{
+          title: 'Job Details',
           presentation: 'card',
         }}
       />
