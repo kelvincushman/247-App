@@ -489,6 +489,7 @@ const updateJobStatus = async (req, res, next) => {
         io
       );
     } else if (status === 'completed') {
+      // Notify customer of completion
       await notificationService.notifyJobCompleted(
         job.customer_id,
         { id: job.id }
@@ -499,6 +500,39 @@ const updateJobStatus = async (req, res, next) => {
         job.id,
         'Your job has been marked as complete! Please review the work and confirm completion.',
         io
+      );
+
+      // Send review prompts to both parties
+      await notificationService.sendNotification(
+        job.customer_id,
+        {
+          type: 'system',
+          title: '⭐ Leave a Review',
+          message: `How was your experience with ${tradespersonName}? Share your feedback to help others.`,
+          priority: 'medium',
+          action_url: `/jobs/${job.id}/review`,
+          data: {
+            job_id: job.id,
+            tradesperson_id: req.user.id
+          }
+        },
+        true
+      );
+
+      await notificationService.sendNotification(
+        req.user.id,
+        {
+          type: 'system',
+          title: '⭐ Leave a Review',
+          message: 'How was your experience with this customer? Your feedback is valuable.',
+          priority: 'medium',
+          action_url: `/jobs/${job.id}/review`,
+          data: {
+            job_id: job.id,
+            customer_id: job.customer_id
+          }
+        },
+        true
       );
     } else if (status === 'cancelled') {
       await notificationService.notifyJobCancelled(
