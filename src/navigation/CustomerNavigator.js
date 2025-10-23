@@ -10,6 +10,7 @@ import CreateJobScreen from '../screens/customer/CreateJobScreen';
 import JobDetailsScreen from '../screens/customer/JobDetailsScreen';
 import ReviewScreen from '../screens/customer/ReviewScreen';
 import ConversationScreen from '../screens/shared/ConversationScreen';
+import NotificationsScreen from '../screens/shared/NotificationsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -121,6 +122,14 @@ const CustomerNavigator = () => {
         component={ConversationScreen}
         options={{
           title: 'Chat',
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{
+          title: 'Notifications',
           presentation: 'card',
         }}
       />

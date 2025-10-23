@@ -1,8 +1,10 @@
 import apiClient from '../client';
+import socketService from '../../services/socketService';
 
 /**
  * Message Service
  * Handles all messaging and conversation API calls
+ * Integrates with Socket.io for real-time messaging
  */
 
 const messageService = {
@@ -152,6 +154,79 @@ const messageService = {
   reportMessage: async (messageId, data) => {
     const response = await apiClient.post(`/messages/${messageId}/report`, data);
     return response.data;
+  },
+
+  // ============ REAL-TIME SOCKET METHODS ============
+
+  /**
+   * Subscribe to new messages in a conversation
+   * @param {string} conversationId
+   * @param {Function} callback - Called when new message received
+   * @returns {Object} - Object with remove() method to unsubscribe
+   */
+  onMessage: (conversationId, callback) => {
+    return socketService.onMessage(conversationId, callback);
+  },
+
+  /**
+   * Subscribe to typing status in a conversation
+   * @param {string} conversationId
+   * @param {Function} callback - Called when typing status changes
+   * @returns {Object} - Object with remove() method to unsubscribe
+   */
+  onTyping: (conversationId, callback) => {
+    return socketService.onTyping(conversationId, callback);
+  },
+
+  /**
+   * Subscribe to any new message (global listener)
+   * @param {Function} callback - Called when any new message received
+   * @returns {Object} - Object with remove() method to unsubscribe
+   */
+  onNewMessage: (callback) => {
+    return socketService.onNewMessage(callback);
+  },
+
+  /**
+   * Send typing indicator
+   * @param {string} conversationId
+   * @param {boolean} isTyping
+   */
+  sendTyping: (conversationId, isTyping) => {
+    socketService.sendTyping(conversationId, isTyping);
+  },
+
+  /**
+   * Mark messages as read via socket
+   * @param {string} conversationId
+   * @param {Array<string>|string} messageIds
+   */
+  markMessagesAsRead: (conversationId, messageIds) => {
+    const ids = Array.isArray(messageIds) ? messageIds : [messageIds];
+    ids.forEach((messageId) => {
+      socketService.markMessageRead(conversationId, messageId);
+    });
+  },
+
+  /**
+   * Initialize socket connection
+   */
+  connectSocket: async () => {
+    await socketService.connect();
+  },
+
+  /**
+   * Disconnect socket
+   */
+  disconnectSocket: () => {
+    socketService.disconnect();
+  },
+
+  /**
+   * Check if socket is connected
+   */
+  isSocketConnected: () => {
+    return socketService.isSocketConnected();
   },
 };
 
