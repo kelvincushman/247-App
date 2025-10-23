@@ -1,28 +1,68 @@
 {
   "expo": {
-    "name": "Expo Uber",
-    "description": "Uber: UI Clone with React Native & Expo",
-    "scheme": "uberclone",
-    "slug": "uberclone",
+    "name": "247 Trades",
+    "description": "Connect with verified tradespeople 24/7",
+    "scheme": "247trades",
+    "slug": "247trades",
     "privacy": "public",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "platforms": ["android", "ios"],
-    "githubUrl": "https://github.com/calebnance/expo-uber",
     "orientation": "portrait",
-    "primaryColor": "#000000",
+    "primaryColor": "#0080FF",
     "icon": "src/assets/icon.png",
     "splash": {
-      "backgroundColor": "#000000",
+      "backgroundColor": "#0080FF",
       "image": "src/assets/splash.png",
       "resizeMode": "contain"
     },
     "assetBundlePatterns": ["**/*"],
     "android": {
-      "versionCode": 1
+      "versionCode": 1,
+      "package": "com.yourcompany.trades247",
+      "adaptiveIcon": {
+        "foregroundImage": "src/assets/icon.png",
+        "backgroundColor": "#0080FF"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "googleServicesFile": "./google-services.json",
+      "useNextNotificationsApi": true
     },
     "ios": {
-      "buildNumber": "0.0.1",
-      "supportsTablet": true
-    }
+      "buildNumber": "1.0.0",
+      "bundleIdentifier": "com.yourcompany.trades247",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to find nearby tradespeople and show job locations.",
+        "NSLocationAlwaysUsageDescription": "We need your location to track job progress and show accurate arrival times.",
+        "NSCameraUsageDescription": "We need camera access to upload photos of your job.",
+        "NSPhotoLibraryUsageDescription": "We need photo library access to upload images for your jobs.",
+        "UIBackgroundModes": [
+          "location",
+          "remote-notification"
+        ]
+      }
+    },
+    "notification": {
+      "icon": "src/assets/notification-icon.png",
+      "color": "#0080FF",
+      "androidMode": "default",
+      "androidCollapsedTitle": "New notification from 247 Trades"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "src/assets/notification-icon.png",
+          "color": "#0080FF",
+          "sounds": []
+        }
+      ]
+    ]
   }
 }

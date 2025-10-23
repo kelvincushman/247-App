@@ -1,26 +1,33 @@
-import * as React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import Toast from 'react-native-toast-message';
+import store, { persistor } from './src/redux/store';
+import RootNavigator from './src/navigation/RootNavigator';
+import { LoadingSpinner } from './src/components/ui';
 import { func } from './src/constants';
 
-// root stack navigation
-import RootStack from './src/navigation/RootStack';
-
+/**
+ * Main App Component
+ * Sets up Redux Provider, Navigation, and Toast notifications
+ */
 const App = () => {
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     async function prepare() {
       try {
-        // keeps the splash screen visible while assets are cached
+        // Keep splash screen visible while assets are cached
         await SplashScreen.preventAutoHideAsync();
 
-        // pre-load/cache assets: images, fonts, and videos
+        // Pre-load/cache assets: images, fonts, and videos
         await func.loadAssetsAsync();
       } catch (e) {
-        // console.warn(e);
+        console.warn('Error loading assets:', e);
       } finally {
-        // loading is complete
+        // Loading is complete
         setIsLoading(false);
       }
     }
@@ -28,13 +35,11 @@ const App = () => {
     prepare();
   }, []);
 
-  React.useEffect(() => {
-    // when loading is complete
+  useEffect(() => {
+    // When loading is complete
     if (isLoading === false) {
-      // hide splash function
+      // Hide splash screen to show app
       const hideSplash = async () => SplashScreen.hideAsync();
-
-      // hide splash screen to show app
       hideSplash();
     }
   }, [isLoading]);
@@ -44,11 +49,13 @@ const App = () => {
   }
 
   return (
-    <React.Fragment>
-      <StatusBar barStyle="dark-content" />
-
-      <RootStack />
-    </React.Fragment>
+    <Provider store={store}>
+      <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
+        <StatusBar barStyle="dark-content" />
+        <RootNavigator />
+        <Toast />
+      </PersistGate>
+    </Provider>
   );
 };
 
