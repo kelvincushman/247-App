@@ -1,4 +1,5 @@
 import React from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import DashboardScreen from '../screens/tradesperson/DashboardScreen';
@@ -6,14 +7,16 @@ import AvailableJobsScreen from '../screens/tradesperson/AvailableJobsScreen';
 import MyJobsScreen from '../screens/tradesperson/MyJobsScreen';
 import MessagesScreen from '../screens/tradesperson/MessagesScreen';
 import ProfileScreen from '../screens/tradesperson/ProfileScreen';
+import JobDetailsScreen from '../screens/tradesperson/JobDetailsScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 /**
- * Tradesperson Navigator
- * Bottom tab navigation for tradesperson app
+ * Tradesperson Tab Navigator
+ * Bottom tab navigation for main tradesperson screens
  */
-const TradespersonNavigator = () => {
+const TradespersonTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -80,6 +83,30 @@ const TradespersonNavigator = () => {
         options={{ title: 'Profile' }}
       />
     </Tab.Navigator>
+  );
+};
+
+/**
+ * Tradesperson Navigator
+ * Stack navigator wrapping tabs for modal screens
+ */
+const TradespersonNavigator = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="TradespersonTabs"
+        component={TradespersonTabs}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="JobDetails"
+        component={JobDetailsScreen}
+        options={{
+          title: 'Job Details',
+          presentation: 'card',
+        }}
+      />
+    </Stack.Navigator>
   );
 };
 
