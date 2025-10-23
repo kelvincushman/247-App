@@ -2,6 +2,7 @@ const socketio = require('socket.io');
 const jwt = require('jsonwebtoken');
 const logger = require('./logger');
 const { User } = require('../models');
+const locationService = require('../services/locationService');
 
 // Store active socket connections
 const activeConnections = new Map();
@@ -127,22 +128,163 @@ const initializeSocket = (server) => {
 
     /**
      * Real-time location updates (for job tracking)
+     * Enhanced to save to database and calculate ETA
      */
-    socket.on('location_update', (data) => {
-      const { job_id, latitude, longitude, heading, speed } = data;
+    socket.on('location_update', async (data) => {
+      try {
+        const { job_id, latitude, longitude, accuracy, heading, speed, altitude } = data;
 
-      // Broadcast location to all users in job room except sender
-      socket.to(`job_${job_id}`).emit('tradesperson_location', {
-        job_id,
-        user_id: userId,
-        location: {
+        // Save location to database and calculate distance/ETA
+        const location = await locationService.recordLocation(job_id, userId, {
           latitude,
           longitude,
+          accuracy,
           heading,
-          speed
-        },
-        timestamp: new Date()
-      });
+          speed,
+          altitude
+        });
+
+        // Broadcast enhanced location data to all users in job room
+        io.to(`job_${job_id}`).emit('tradesperson_location', {
+          job_id,
+          tradesperson_id: userId,
+          location: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
+            heading: location.heading,
+            speed: location.speed,
+            altitude: location.altitude
+          },
+          distance_to_destination_km: location.distance_to_destination,
+          estimated_arrival_time: location.estimated_arrival_time,
+          status: location.status,
+          timestamp: location.timestamp
+        });
+
+        logger.info(`Location updated for job ${job_id} by user ${userId}`);
+      } catch (error) {
+        logger.error(`Location update error for job ${data.job_id}:`, error);
+        socket.emit('location_update_error', {
+          message: error.message || 'Failed to update location'
+        });
+      }
+    });
+
+    /**
+     * Start location tracking for a job
+     */
+    socket.on('start_tracking', async (data) => {
+      try {
+        const { job_id, latitude, longitude, accuracy, heading, speed, altitude } = data;
+
+        const location = await locationService.startTracking(job_id, userId, {
+          latitude,
+          longitude,
+          accuracy,
+          heading,
+          speed,
+          altitude
+        });
+
+        // Notify all users in job room
+        io.to(`job_${job_id}`).emit('tracking_started', {
+          job_id,
+          tradesperson_id: userId,
+          location,
+          message: 'Tradesperson is on the way'
+        });
+
+        socket.emit('tracking_started_success', {
+          job_id,
+          location
+        });
+
+        logger.info(`Tracking started for job ${job_id} by user ${userId}`);
+      } catch (error) {
+        logger.error(`Start tracking error for job ${data.job_id}:`, error);
+        socket.emit('tracking_error', {
+          message: error.message || 'Failed to start tracking'
+        });
+      }
+    });
+
+    /**
+     * Stop location tracking for a job
+     */
+    socket.on('stop_tracking', async (data) => {
+      try {
+        const { job_id, latitude, longitude, accuracy, heading, speed, altitude } = data;
+
+        const location = await locationService.stopTracking(job_id, userId, {
+          latitude,
+          longitude,
+          accuracy,
+          heading,
+          speed,
+          altitude
+        });
+
+        // Notify all users in job room
+        io.to(`job_${job_id}`).emit('tracking_stopped', {
+          job_id,
+          tradesperson_id: userId,
+          location,
+          message: 'Location tracking ended'
+        });
+
+        socket.emit('tracking_stopped_success', {
+          job_id,
+          location
+        });
+
+        logger.info(`Tracking stopped for job ${job_id} by user ${userId}`);
+      } catch (error) {
+        logger.error(`Stop tracking error for job ${data.job_id}:`, error);
+        socket.emit('tracking_error', {
+          message: error.message || 'Failed to stop tracking'
+        });
+      }
+    });
+
+    /**
+     * Update job site status (arrived, on_site, departed)
+     */
+    socket.on('update_job_site_status', async (data) => {
+      try {
+        const { job_id, status, latitude, longitude, accuracy, heading, speed, altitude } = data;
+
+        const location = await locationService.updateJobSiteStatus(job_id, userId, status, {
+          latitude,
+          longitude,
+          accuracy,
+          heading,
+          speed,
+          altitude
+        });
+
+        // Notify all users in job room
+        io.to(`job_${job_id}`).emit('job_site_status_updated', {
+          job_id,
+          tradesperson_id: userId,
+          status,
+          location,
+          timestamp: new Date()
+        });
+
+        socket.emit('status_update_success', {
+          job_id,
+          status,
+          location
+        });
+
+        logger.info(`Job site status updated to ${status} for job ${job_id} by user ${userId}`);
+      } catch (error) {
+        logger.error(`Job site status update error for job ${data.job_id}:`, error);
+        socket.emit('status_update_error', {
+          message: error.message || 'Failed to update job site status'
+        });
+      }
     });
 
     /**

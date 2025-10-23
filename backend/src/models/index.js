@@ -8,6 +8,7 @@ const Message = require('./Message');
 const Notification = require('./Notification');
 const Availability = require('./Availability');
 const TimeSlot = require('./TimeSlot');
+const Location = require('./Location');
 
 // Define associations
 User.hasOne(CustomerProfile, { foreignKey: 'user_id', as: 'customerProfile' });
@@ -61,6 +62,13 @@ TimeSlot.belongsTo(User, { foreignKey: 'customer_id', as: 'customer' });
 Job.hasOne(TimeSlot, { foreignKey: 'job_id', as: 'timeSlot' });
 TimeSlot.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
 
+// Location associations
+User.hasMany(Location, { foreignKey: 'tradesperson_id', as: 'locations' });
+Location.belongsTo(User, { foreignKey: 'tradesperson_id', as: 'tradesperson' });
+
+Job.hasMany(Location, { foreignKey: 'job_id', as: 'locationHistory' });
+Location.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
+
 module.exports = {
   sequelize,
   User,
@@ -71,5 +79,6 @@ module.exports = {
   Message,
   Notification,
   Availability,
-  TimeSlot
+  TimeSlot,
+  Location
 };
