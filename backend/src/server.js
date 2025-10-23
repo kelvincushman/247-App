@@ -13,6 +13,7 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const swaggerSpec = require('./config/swagger');
 const { initializeSocket } = require('./config/socket');
 const { initializeFirebase } = require('./config/firebase');
+const { performanceMonitoring, getMetrics, getHealthStatus } = require('./middleware/monitoring');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -80,13 +81,30 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// Health check
-app.get('/health', (req, res) => {
+// Performance monitoring
+app.use(performanceMonitoring);
+
+// Health check with comprehensive status
+app.get('/health', async (req, res) => {
+  const healthStatus = await getHealthStatus();
+  const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(healthStatus);
+});
+
+// Metrics endpoint (production-only, protected)
+app.get('/metrics', (req, res) => {
+  if (process.env.NODE_ENV !== 'production') {
+    return res.status(403).json({
+      success: false,
+      message: 'Metrics endpoint only available in production'
+    });
+  }
+
+  // In production, you might want to add authentication here
+  const metrics = getMetrics();
   res.json({
     success: true,
-    message: '247 Trades API is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
+    data: metrics
   });
 });
 
