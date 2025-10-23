@@ -1,6 +1,8 @@
 const { Job, User, TradespersonProfile, CustomerProfile, sequelize } = require('../models');
 const logger = require('../config/logger');
 const { Op } = require('sequelize');
+const notificationService = require('../services/notificationService');
+const messagingService = require('../services/messagingService');
 
 // @desc    Create a new job
 // @route   POST /api/v1/jobs
@@ -38,8 +40,26 @@ const createJob = async (req, res, next) => {
 
     logger.info(`Job created by customer ${req.user.id}: ${job.id}`);
 
-    // TODO: Trigger job matching algorithm
-    // TODO: Send notifications to matched tradespeople
+    // Get Socket.io instance
+    const io = req.app.get('io');
+
+    // Send system message to customer
+    await messagingService.sendSystemMessage(
+      req.user.id,
+      job.id,
+      'Your job request has been created. We are finding the best tradespeople for you!',
+      io
+    );
+
+    // Emit real-time event
+    if (io) {
+      io.emitToUser(req.user.id, 'job_created', {
+        job_id: job.id,
+        status: 'requested'
+      });
+    }
+
+    // TODO: Trigger job matching algorithm to find and notify tradespeople
 
     res.status(201).json({
       success: true,
@@ -279,12 +299,70 @@ const acceptJob = async (req, res, next) => {
 
     logger.info(`Job ${job.id} accepted by tradesperson ${req.user.id}`);
 
-    // TODO: Send notification to customer
+    // Get Socket.io instance
+    const io = req.app.get('io');
+
+    // Load full job details with relationships
+    const jobWithDetails = await Job.findByPk(job.id, {
+      include: [
+        {
+          model: User,
+          as: 'customer',
+          attributes: ['id', 'first_name', 'last_name', 'profile_image_url', 'phone']
+        },
+        {
+          model: User,
+          as: 'tradesperson',
+          attributes: ['id', 'first_name', 'last_name', 'profile_image_url', 'phone']
+        }
+      ]
+    });
+
+    // Get tradesperson profile
+    const tradespersonProfile = await TradespersonProfile.findOne({
+      where: { user_id: req.user.id }
+    });
+
+    // Send notification to customer
+    await notificationService.notifyJobAccepted(
+      job.customer_id,
+      {
+        id: job.id,
+        tradeCategory: job.trade_category
+      },
+      {
+        id: req.user.id,
+        businessName: tradespersonProfile?.business_name || `${req.user.first_name} ${req.user.last_name}`
+      }
+    );
+
+    // Send system message
+    await messagingService.sendSystemMessage(
+      job.customer_id,
+      job.id,
+      `${tradespersonProfile?.business_name || req.user.first_name} has accepted your job request!`,
+      io
+    );
+
+    // Emit real-time event to both parties
+    if (io) {
+      io.emitToUser(job.customer_id, 'job_accepted', {
+        job_id: job.id,
+        tradesperson_id: req.user.id,
+        status: 'accepted'
+      });
+
+      io.emitToJob(job.id, 'job_status_changed', {
+        job_id: job.id,
+        status: 'accepted',
+        updated_by: req.user.id
+      });
+    }
 
     res.json({
       success: true,
       message: 'Job accepted successfully',
-      data: { job }
+      data: { job: jobWithDetails }
     });
   } catch (error) {
     await transaction.rollback();
@@ -386,7 +464,71 @@ const updateJobStatus = async (req, res, next) => {
 
     logger.info(`Job ${job.id} status updated to ${status} by tradesperson ${req.user.id}`);
 
-    // TODO: Send notification to customer
+    // Get Socket.io instance
+    const io = req.app.get('io');
+
+    // Get tradesperson profile
+    const tradespersonProfile = await TradespersonProfile.findOne({
+      where: { user_id: req.user.id }
+    });
+
+    const tradespersonName = tradespersonProfile?.business_name || `${req.user.first_name} ${req.user.last_name}`;
+
+    // Send notifications based on status
+    if (status === 'in_progress') {
+      await notificationService.notifyJobStarted(
+        job.customer_id,
+        { id: job.id },
+        { id: req.user.id, businessName: tradespersonName }
+      );
+
+      await messagingService.sendSystemMessage(
+        job.customer_id,
+        job.id,
+        `${tradespersonName} has started working on your job.`,
+        io
+      );
+    } else if (status === 'completed') {
+      await notificationService.notifyJobCompleted(
+        job.customer_id,
+        { id: job.id }
+      );
+
+      await messagingService.sendSystemMessage(
+        job.customer_id,
+        job.id,
+        'Your job has been marked as complete! Please review the work and confirm completion.',
+        io
+      );
+    } else if (status === 'cancelled') {
+      await notificationService.notifyJobCancelled(
+        job.customer_id,
+        { id: job.id },
+        notes || 'Job cancelled by tradesperson'
+      );
+
+      await messagingService.sendSystemMessage(
+        job.customer_id,
+        job.id,
+        `Job cancelled: ${notes || 'No reason provided'}`,
+        io
+      );
+    }
+
+    // Emit real-time event
+    if (io) {
+      io.emitToJob(job.id, 'job_status_changed', {
+        job_id: job.id,
+        status,
+        updated_by: req.user.id,
+        timestamp: new Date()
+      });
+
+      io.emitToUser(job.customer_id, 'job_updated', {
+        job_id: job.id,
+        status
+      });
+    }
 
     res.json({
       success: true,

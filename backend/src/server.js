@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -10,6 +11,8 @@ const { connectDB } = require('./config/database');
 const logger = require('./config/logger');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const swaggerSpec = require('./config/swagger');
+const { initializeSocket } = require('./config/socket');
+const { initializeFirebase } = require('./config/firebase');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -19,9 +22,23 @@ const adminRoutes = require('./routes/adminRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Initialize express app
 const app = express();
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const io = initializeSocket(server);
+
+// Make io accessible to routes
+app.set('io', io);
+
+// Initialize Firebase
+initializeFirebase();
 
 // Connect to database
 connectDB();
@@ -82,6 +99,8 @@ app.use(`/api/${API_VERSION}/profiles/tradesperson`, tradespersonProfileRoutes);
 app.use(`/api/${API_VERSION}/admin`, adminRoutes);
 app.use(`/api/${API_VERSION}/jobs`, jobRoutes);
 app.use(`/api/${API_VERSION}/payments`, paymentRoutes);
+app.use(`/api/${API_VERSION}/messages`, messageRoutes);
+app.use(`/api/${API_VERSION}/notifications`, notificationRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
@@ -100,9 +119,11 @@ app.use(errorHandler);
 // Start server
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
   logger.info(`📡 API available at http://localhost:${PORT}/api/${API_VERSION}`);
+  logger.info(`🔌 Socket.io listening for real-time connections`);
+  logger.info(`📱 Push notifications enabled via Firebase Cloud Messaging`);
 });
 
 // Handle unhandled promise rejections

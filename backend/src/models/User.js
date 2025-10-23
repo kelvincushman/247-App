@@ -58,6 +58,24 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: true,
     unique: true
+  },
+  fcm_token: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Firebase Cloud Messaging token for push notifications'
+  },
+  notification_preferences: {
+    type: DataTypes.JSONB,
+    defaultValue: {
+      job_updates: true,
+      payment_updates: true,
+      messages: true,
+      reviews: true,
+      marketing: false,
+      push_enabled: true,
+      email_enabled: true
+    },
+    allowNull: true
   }
 }, {
   tableName: 'users',

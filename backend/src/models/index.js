@@ -4,6 +4,8 @@ const CustomerProfile = require('./CustomerProfile');
 const TradespersonProfile = require('./TradespersonProfile');
 const Job = require('./Job');
 const Review = require('./Review');
+const Message = require('./Message');
+const Notification = require('./Notification');
 
 // Define associations
 User.hasOne(CustomerProfile, { foreignKey: 'user_id', as: 'customerProfile' });
@@ -29,11 +31,27 @@ Review.belongsTo(User, { foreignKey: 'reviewee_id', as: 'reviewee' });
 Job.hasMany(Review, { foreignKey: 'job_id', as: 'reviews' });
 Review.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
 
+// Message associations
+User.hasMany(Message, { foreignKey: 'sender_id', as: 'sentMessages' });
+Message.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' });
+
+User.hasMany(Message, { foreignKey: 'receiver_id', as: 'receivedMessages' });
+Message.belongsTo(User, { foreignKey: 'receiver_id', as: 'receiver' });
+
+Job.hasMany(Message, { foreignKey: 'job_id', as: 'messages' });
+Message.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
+
+// Notification associations
+User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
+Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 module.exports = {
   sequelize,
   User,
   CustomerProfile,
   TradespersonProfile,
   Job,
-  Review
+  Review,
+  Message,
+  Notification
 };
