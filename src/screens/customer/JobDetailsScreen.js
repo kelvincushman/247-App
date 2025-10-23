@@ -231,6 +231,11 @@ const JobDetailsScreen = ({ route, navigation }) => {
   const canDispute =
     job.status === JOB_STATUS.IN_PROGRESS || job.status === JOB_STATUS.COMPLETED;
 
+  // Show review button when job is completed and payment is released
+  const canWriteReview =
+    job.status === JOB_STATUS.COMPLETED &&
+    job.paymentStatus === PAYMENT_STATUS.RELEASED;
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -456,6 +461,33 @@ const JobDetailsScreen = ({ route, navigation }) => {
               size="medium"
               fullWidth
               style={styles.disputeButton}
+            />
+          </Card>
+        )}
+
+        {/* Review Section - After Payment Released */}
+        {canWriteReview && (
+          <Card style={styles.reviewCard}>
+            <View style={styles.reviewHeader}>
+              <Ionicons name="star" size={28} color="#FFB800" />
+              <Text style={styles.reviewTitle}>Rate Your Experience</Text>
+            </View>
+            <Text style={styles.reviewMessage}>
+              How was your experience with {job.tradesperson?.firstName}? Your feedback helps
+              others make informed decisions.
+            </Text>
+            <Button
+              title="Write a Review"
+              onPress={() =>
+                navigation.navigate('Review', {
+                  jobId: job.id,
+                  tradesperson: job.tradesperson,
+                })
+              }
+              variant="primary"
+              size="large"
+              fullWidth
+              icon="create-outline"
             />
           </Card>
         )}
@@ -703,6 +735,29 @@ const styles = StyleSheet.create({
   },
   disputeButton: {
     marginTop: 8,
+  },
+  reviewCard: {
+    marginBottom: 16,
+    backgroundColor: '#FFFBEA',
+    borderWidth: 2,
+    borderColor: '#FFB800',
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reviewTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#F59E0B',
+    marginLeft: 8,
+  },
+  reviewMessage: {
+    fontSize: 14,
+    color: '#333333',
+    lineHeight: 20,
+    marginBottom: 16,
   },
   actions: {
     gap: 12,
