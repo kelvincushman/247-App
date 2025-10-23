@@ -17,6 +17,8 @@ const customerProfileRoutes = require('./routes/customerProfileRoutes');
 const tradespersonProfileRoutes = require('./routes/tradespersonProfileRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const jobRoutes = require('./routes/jobRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 // Initialize express app
 const app = express();
@@ -42,6 +44,10 @@ const limiter = rateLimit({
 
 app.use('/api', limiter);
 
+// Webhook routes (must be before body parser for raw body)
+const API_VERSION = process.env.API_VERSION || 'v1';
+app.use(`/api/${API_VERSION}/webhooks`, express.raw({ type: 'application/json' }), webhookRoutes);
+
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -64,8 +70,6 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-const API_VERSION = process.env.API_VERSION || 'v1';
-
 // Swagger documentation
 app.use(`/api/${API_VERSION}/docs`, swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
@@ -77,6 +81,7 @@ app.use(`/api/${API_VERSION}/profiles/customer`, customerProfileRoutes);
 app.use(`/api/${API_VERSION}/profiles/tradesperson`, tradespersonProfileRoutes);
 app.use(`/api/${API_VERSION}/admin`, adminRoutes);
 app.use(`/api/${API_VERSION}/jobs`, jobRoutes);
+app.use(`/api/${API_VERSION}/payments`, paymentRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
