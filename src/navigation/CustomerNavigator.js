@@ -1,18 +1,21 @@
 import React from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/customer/HomeScreen';
 import JobsScreen from '../screens/customer/JobsScreen';
 import MessagesScreen from '../screens/customer/MessagesScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
+import CreateJobScreen from '../screens/customer/CreateJobScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 /**
- * Customer Navigator
- * Bottom tab navigation for customer app
+ * Customer Tab Navigator
+ * Bottom tab navigation for main customer screens
  */
-const CustomerNavigator = () => {
+const CustomerTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -71,6 +74,30 @@ const CustomerNavigator = () => {
         options={{ title: 'Profile' }}
       />
     </Tab.Navigator>
+  );
+};
+
+/**
+ * Customer Navigator
+ * Stack navigator wrapping tabs for modal screens
+ */
+const CustomerNavigator = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="CustomerTabs"
+        component={CustomerTabs}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CreateJob"
+        component={CreateJobScreen}
+        options={{
+          title: 'Create Job Request',
+          presentation: 'card',
+        }}
+      />
+    </Stack.Navigator>
   );
 };
 
