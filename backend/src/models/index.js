@@ -6,6 +6,8 @@ const Job = require('./Job');
 const Review = require('./Review');
 const Message = require('./Message');
 const Notification = require('./Notification');
+const Availability = require('./Availability');
+const TimeSlot = require('./TimeSlot');
 
 // Define associations
 User.hasOne(CustomerProfile, { foreignKey: 'user_id', as: 'customerProfile' });
@@ -45,6 +47,20 @@ Message.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
 User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
 Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
+// Availability associations
+User.hasOne(Availability, { foreignKey: 'tradesperson_id', as: 'availability' });
+Availability.belongsTo(User, { foreignKey: 'tradesperson_id', as: 'tradesperson' });
+
+// TimeSlot associations
+User.hasMany(TimeSlot, { foreignKey: 'tradesperson_id', as: 'timeSlots' });
+TimeSlot.belongsTo(User, { foreignKey: 'tradesperson_id', as: 'tradesperson' });
+
+User.hasMany(TimeSlot, { foreignKey: 'customer_id', as: 'bookedSlots' });
+TimeSlot.belongsTo(User, { foreignKey: 'customer_id', as: 'customer' });
+
+Job.hasOne(TimeSlot, { foreignKey: 'job_id', as: 'timeSlot' });
+TimeSlot.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
+
 module.exports = {
   sequelize,
   User,
@@ -53,5 +69,7 @@ module.exports = {
   Job,
   Review,
   Message,
-  Notification
+  Notification,
+  Availability,
+  TimeSlot
 };
