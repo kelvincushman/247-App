@@ -26,6 +26,7 @@ const messageRoutes = require('./routes/messageRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const availabilityRoutes = require('./routes/availabilityRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 // Initialize express app
 const app = express();
@@ -105,6 +106,7 @@ app.use(`/api/${API_VERSION}/messages`, messageRoutes);
 app.use(`/api/${API_VERSION}/notifications`, notificationRoutes);
 app.use(`/api/${API_VERSION}/reviews`, reviewRoutes);
 app.use(`/api/${API_VERSION}/availability`, availabilityRoutes);
+app.use(`/api/${API_VERSION}/dashboard`, dashboardRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
