@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { formatDistanceToNow } from 'date-fns';
  * Customer Messages Screen
  * Lists all conversations with tradespeople
  * Shows unread badges and last message preview
+ * FIXED: Prevents memory leaks by checking if component is mounted before state updates
  */
 
 const MessagesScreen = ({ navigation }) => {
@@ -28,45 +29,76 @@ const MessagesScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [conversations, setConversations] = useState([]);
 
+  // FIXED: Track if component is mounted to prevent memory leaks
+  const isMountedRef = useRef(true);
+  const messageListenerRef = useRef(null);
+
   useEffect(() => {
+    isMountedRef.current = true;
+
     loadConversations();
 
     // Set up real-time listener for new messages
-    const messageListener = messageService.onNewMessage((message) => {
+    messageListenerRef.current = messageService.onNewMessage((message) => {
       // Update conversation list when new message arrives
-      loadConversations();
+      if (isMountedRef.current) {
+        loadConversations();
+      }
     });
 
     return () => {
+      // FIXED: Mark component as unmounted to prevent state updates
+      isMountedRef.current = false;
+
       // Cleanup listener
-      if (messageListener) {
-        messageListener.remove();
+      if (messageListenerRef.current) {
+        messageListenerRef.current.remove();
+        messageListenerRef.current = null;
       }
     };
   }, []);
 
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
-      setLoading(true);
+      // FIXED: Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setLoading(true);
+      }
+
       const response = await messageService.getConversations();
-      setConversations(response.conversations || []);
+
+      // FIXED: Check if mounted before updating state
+      if (isMountedRef.current) {
+        setConversations(response.conversations || []);
+      }
     } catch (err) {
       console.error('Failed to load conversations:', err);
-      Toast.show({
-        type: 'error',
-        text1: 'Load Failed',
-        text2: 'Failed to load conversations',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
+      // FIXED: Only show toast if component is still mounted
+      if (isMountedRef.current) {
+        Toast.show({
+          type: 'error',
+          text1: 'Load Failed',
+          text2: 'Failed to load conversations',
+        });
+      }
+    } finally {
+      // FIXED: Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    if (isMountedRef.current) {
+      setRefreshing(true);
+    }
     await loadConversations();
-    setRefreshing(false);
-  };
+    if (isMountedRef.current) {
+      setRefreshing(false);
+    }
+  }, [loadConversations]);
 
   const handleConversationPress = (conversation) => {
     navigation.navigate('Conversation', {
