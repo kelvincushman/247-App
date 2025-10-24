@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import socketClient from '../socket/client';
 import { selectIsAuthenticated } from '../redux/slices/authSlice';
@@ -78,28 +78,42 @@ export const useSocketRoom = (roomId, enabled = true) => {
 /**
  * Hook for typing indicator in chat
  * @param {string} jobId - Job ID
+ * FIXED: Prevents memory leak by using useRef for timeout persistence
  */
 export const useTypingIndicator = (jobId) => {
   const { sendTypingIndicator } = useSocket();
-  let typingTimeout = null;
+  // FIXED: Use useRef to persist timeout across renders
+  const typingTimeoutRef = useRef(null);
+
+  // FIXED: Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const startTyping = useCallback(() => {
     sendTypingIndicator(jobId, true);
 
     // Clear existing timeout
-    if (typingTimeout) {
-      clearTimeout(typingTimeout);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
     }
 
     // Auto-stop typing after 3 seconds of inactivity
-    typingTimeout = setTimeout(() => {
+    typingTimeoutRef.current = setTimeout(() => {
       sendTypingIndicator(jobId, false);
+      typingTimeoutRef.current = null;
     }, 3000);
   }, [jobId, sendTypingIndicator]);
 
   const stopTyping = useCallback(() => {
-    if (typingTimeout) {
-      clearTimeout(typingTimeout);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
     }
     sendTypingIndicator(jobId, false);
   }, [jobId, sendTypingIndicator]);

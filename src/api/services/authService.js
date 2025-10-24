@@ -1,9 +1,11 @@
-import apiClient from '../client';
+import apiClient, { secureStorage } from '../client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 /**
  * Authentication Service
  * Handles all authentication-related API calls
+ * FIXED: Uses SecureStore for tokens (hardware-backed encryption)
  */
 
 const authService = {
@@ -20,8 +22,10 @@ const authService = {
     const response = await apiClient.post('/auth/register/customer', data);
 
     if (response.data.accessToken) {
-      await AsyncStorage.setItem('accessToken', response.data.accessToken);
-      await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+      // FIXED: Use SecureStore for tokens (hardware-backed encryption)
+      await secureStorage.setToken('accessToken', response.data.accessToken);
+      await secureStorage.setToken('refreshToken', response.data.refreshToken);
+      // User data can stay in AsyncStorage (not sensitive)
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
     }
 
@@ -47,8 +51,10 @@ const authService = {
     const response = await apiClient.post('/auth/register/tradesperson', data);
 
     if (response.data.accessToken) {
-      await AsyncStorage.setItem('accessToken', response.data.accessToken);
-      await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+      // FIXED: Use SecureStore for tokens (hardware-backed encryption)
+      await secureStorage.setToken('accessToken', response.data.accessToken);
+      await secureStorage.setToken('refreshToken', response.data.refreshToken);
+      // User data can stay in AsyncStorage (not sensitive)
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
     }
 
@@ -65,8 +71,10 @@ const authService = {
     const response = await apiClient.post('/auth/login', credentials);
 
     if (response.data.accessToken) {
-      await AsyncStorage.setItem('accessToken', response.data.accessToken);
-      await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+      // FIXED: Use SecureStore for tokens (hardware-backed encryption)
+      await secureStorage.setToken('accessToken', response.data.accessToken);
+      await secureStorage.setToken('refreshToken', response.data.refreshToken);
+      // User data can stay in AsyncStorage (not sensitive)
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
     }
 
@@ -78,7 +86,8 @@ const authService = {
    */
   logout: async () => {
     try {
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      // FIXED: Get refresh token from SecureStore
+      const refreshToken = await secureStorage.getToken('refreshToken');
 
       if (refreshToken) {
         await apiClient.post('/auth/logout', { refreshToken });
@@ -86,8 +95,8 @@ const authService = {
     } catch (error) {
       console.error('Logout API error:', error);
     } finally {
-      // Clear local storage regardless of API call success
-      await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+      // FIXED: Clear tokens from SecureStore and user from AsyncStorage
+      await secureStorage.clearTokens();
     }
   },
 
@@ -99,9 +108,10 @@ const authService = {
     const response = await apiClient.post('/auth/refresh', { refreshToken });
 
     if (response.data.accessToken) {
-      await AsyncStorage.setItem('accessToken', response.data.accessToken);
+      // FIXED: Use SecureStore for tokens (hardware-backed encryption)
+      await secureStorage.setToken('accessToken', response.data.accessToken);
       if (response.data.refreshToken) {
-        await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+        await secureStorage.setToken('refreshToken', response.data.refreshToken);
       }
     }
 
@@ -136,6 +146,7 @@ const authService = {
     const response = await apiClient.post('/auth/verify-email', { token });
 
     if (response.data.user) {
+      // User data can stay in AsyncStorage (not sensitive)
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
     }
 
@@ -168,6 +179,7 @@ const authService = {
     const response = await apiClient.get('/auth/profile');
 
     if (response.data.user) {
+      // User data can stay in AsyncStorage (not sensitive)
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
     }
 

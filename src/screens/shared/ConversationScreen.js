@@ -28,7 +28,8 @@ import { format, isToday, isYesterday } from 'date-fns';
  */
 
 const ConversationScreen = ({ route, navigation }) => {
-  const { conversationId, otherUser, jobId } = route.params;
+  // FIXED: Add null checks for route params to prevent crashes
+  const { conversationId, otherUser, jobId } = route.params || {};
   const user = useSelector(selectUser);
 
   const [loading, setLoading] = useState(true);
@@ -40,6 +41,18 @@ const ConversationScreen = ({ route, navigation }) => {
   const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
+    // FIXED: Validate required params before continuing
+    if (!conversationId || !jobId) {
+      console.error('Missing required params: conversationId or jobId');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Invalid conversation',
+      });
+      navigation.goBack();
+      return;
+    }
+
     // Set header with other user's name
     navigation.setOptions({
       title: `${otherUser?.firstName} ${otherUser?.lastName}`,
@@ -73,9 +86,12 @@ const ConversationScreen = ({ route, navigation }) => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
 
-      // Mark as read if not from current user
+      // FIXED: Mark as read if not from current user (with error handling)
       if (newMessage.senderId !== user.id) {
-        messageService.markAsRead(conversationId, newMessage.id);
+        messageService.markAsRead(conversationId, newMessage.id).catch((error) => {
+          console.error('Failed to mark message as read:', error);
+          // Message stays unread on backend, which is safer than data inconsistency
+        });
       }
     });
 
@@ -273,14 +289,8 @@ const ConversationScreen = ({ route, navigation }) => {
     setSending(true);
 
     try {
-      // TODO: CRITICAL - messageService.sendMessage only accepts text content
-      // Need to implement proper image upload API endpoint
-      // For now, using jobId parameter (was using conversationId incorrectly)
-      // This will likely fail until backend supports image upload
-      await messageService.sendMessage(jobId, {
-        type: 'image',
-        image: asset,
-      });
+      // FIXED: Use messageService.sendImage instead of sendMessage
+      await messageService.sendImage(jobId, asset, null);
 
       Toast.show({
         type: 'success',
