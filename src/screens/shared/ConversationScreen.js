@@ -99,7 +99,8 @@ const ConversationScreen = ({ route, navigation }) => {
   const loadMessages = async () => {
     try {
       setLoading(true);
-      const response = await messageService.getMessages(conversationId);
+      // FIXED: Use jobId instead of conversationId (API expects jobId)
+      const response = await messageService.getMessages(jobId);
       setMessages(response.messages || []);
 
       // Scroll to bottom after loading
@@ -134,28 +135,99 @@ const ConversationScreen = ({ route, navigation }) => {
     setMessageText('');
     setSending(true);
 
+    // FIXED: Optimistic UI update - Add message immediately to prevent data loss
+    const optimisticMessage = {
+      id: `temp-${Date.now()}`, // Temporary ID until server confirms
+      text,
+      type: 'text',
+      senderId: user.id,
+      createdAt: new Date().toISOString(),
+      read: false,
+      status: 'sending', // Track sending status
+    };
+
+    // Add optimistic message to UI immediately
+    setMessages((prevMessages) => [...prevMessages, optimisticMessage]);
+
+    // Scroll to bottom to show new message
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+
     try {
-      await messageService.sendMessage(conversationId, {
-        text,
-        type: 'text',
-        jobId,
-      });
+      // FIXED: Use jobId and pass text content as string (API expects jobId, string)
+      const sentMessage = await messageService.sendMessage(jobId, text);
 
       // Stop typing indicator
       messageService.sendTyping(conversationId, false);
 
-      // Message will be added via real-time listener
+      // Replace optimistic message with real message from server
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === optimisticMessage.id
+            ? { ...sentMessage, status: 'sent' }
+            : msg
+        )
+      );
     } catch (err) {
       console.error('Failed to send message:', err);
+
+      // Mark message as failed in UI (don't remove it)
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === optimisticMessage.id
+            ? { ...msg, status: 'failed' }
+            : msg
+        )
+      );
+
       Toast.show({
         type: 'error',
         text1: 'Send Failed',
-        text2: 'Failed to send message',
+        text2: 'Tap message to retry',
       });
-      // Restore message text on error
-      setMessageText(text);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleRetryMessage = async (message) => {
+    // Mark message as sending again
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg.id === message.id ? { ...msg, status: 'sending' } : msg
+      )
+    );
+
+    try {
+      const sentMessage = await messageService.sendMessage(jobId, message.text);
+
+      // Replace with successful message
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === message.id ? { ...sentMessage, status: 'sent' } : msg
+        )
+      );
+
+      Toast.show({
+        type: 'success',
+        text1: 'Message Sent',
+      });
+    } catch (err) {
+      console.error('Failed to retry message:', err);
+
+      // Mark as failed again
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === message.id ? { ...msg, status: 'failed' } : msg
+        )
+      );
+
+      Toast.show({
+        type: 'error',
+        text1: 'Retry Failed',
+        text2: 'Please try again',
+      });
     }
   };
 
@@ -201,10 +273,13 @@ const ConversationScreen = ({ route, navigation }) => {
     setSending(true);
 
     try {
-      await messageService.sendMessage(conversationId, {
+      // TODO: CRITICAL - messageService.sendMessage only accepts text content
+      // Need to implement proper image upload API endpoint
+      // For now, using jobId parameter (was using conversationId incorrectly)
+      // This will likely fail until backend supports image upload
+      await messageService.sendMessage(jobId, {
         type: 'image',
         image: asset,
-        jobId,
       });
 
       Toast.show({
@@ -297,14 +372,32 @@ const ConversationScreen = ({ route, navigation }) => {
               {formatMessageTime(message.createdAt)}
             </Text>
 
-            {/* Read receipt for own messages */}
+            {/* Status indicators for own messages */}
             {isOwnMessage && (
-              <Ionicons
-                name={message.read ? 'checkmark-done' : 'checkmark'}
-                size={14}
-                color={message.read ? '#0080FF' : 'rgba(255,255,255,0.7)'}
-                style={styles.readIcon}
-              />
+              <>
+                {message.status === 'sending' && (
+                  <View style={styles.sendingIndicator}>
+                    <Text style={styles.sendingText}>Sending...</Text>
+                  </View>
+                )}
+                {message.status === 'failed' && (
+                  <TouchableOpacity
+                    onPress={() => handleRetryMessage(message)}
+                    style={styles.retryButton}
+                  >
+                    <Ionicons name="reload" size={14} color="#FF3B30" />
+                    <Text style={styles.retryText}>Retry</Text>
+                  </TouchableOpacity>
+                )}
+                {message.status !== 'sending' && message.status !== 'failed' && (
+                  <Ionicons
+                    name={message.read ? 'checkmark-done' : 'checkmark'}
+                    size={14}
+                    color={message.read ? '#0080FF' : 'rgba(255,255,255,0.7)'}
+                    style={styles.readIcon}
+                  />
+                )}
+              </>
             )}
           </View>
         </View>
@@ -470,6 +563,29 @@ const styles = StyleSheet.create({
   },
   readIcon: {
     marginLeft: 4,
+  },
+  sendingIndicator: {
+    marginLeft: 6,
+  },
+  sendingText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontStyle: 'italic',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+  },
+  retryText: {
+    fontSize: 11,
+    color: '#FF3B30',
+    marginLeft: 4,
+    fontWeight: '600',
   },
   typingContainer: {
     flexDirection: 'row',

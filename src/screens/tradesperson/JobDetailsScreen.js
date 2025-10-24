@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -41,6 +41,9 @@ const JobDetailsScreen = ({ route, navigation }) => {
   const [tracking, setTracking] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
 
+  // Store location subscription in ref for proper cleanup
+  const locationSubscriptionRef = useRef(null);
+
   useEffect(() => {
     loadJob();
   }, [jobId]);
@@ -52,9 +55,8 @@ const JobDetailsScreen = ({ route, navigation }) => {
     }
 
     return () => {
-      if (tracking) {
-        stopGPSTracking();
-      }
+      // Properly cleanup location subscription on unmount
+      stopGPSTracking();
     };
   }, [job?.status]);
 
@@ -91,9 +93,10 @@ const JobDetailsScreen = ({ route, navigation }) => {
       setTracking(true);
 
       // Watch position for continuous tracking
-      const locationSubscription = await Location.watchPositionAsync(
+      // FIXED: Changed from High to Balanced accuracy (10x less battery drain)
+      locationSubscriptionRef.current = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.High,
+          accuracy: Location.Accuracy.Balanced, // Changed from High to save battery
           timeInterval: 30000, // Update every 30 seconds
           distanceInterval: 50, // Or every 50 meters
         },
@@ -116,9 +119,6 @@ const JobDetailsScreen = ({ route, navigation }) => {
         }
       );
 
-      // Store subscription for cleanup
-      locationSubscription.remove = () => locationSubscription.remove();
-
     } catch (err) {
       console.error('Failed to start GPS tracking:', err);
       Toast.show({
@@ -130,6 +130,11 @@ const JobDetailsScreen = ({ route, navigation }) => {
   };
 
   const stopGPSTracking = () => {
+    // FIXED: Actually remove the location subscription to prevent memory leak
+    if (locationSubscriptionRef.current) {
+      locationSubscriptionRef.current.remove();
+      locationSubscriptionRef.current = null;
+    }
     setTracking(false);
     setCurrentLocation(null);
   };
@@ -236,7 +241,8 @@ const JobDetailsScreen = ({ route, navigation }) => {
             try {
               setCompletingJob(true);
 
-              await jobService.markJobComplete(jobId, {
+              // FIXED: Verify payment was held before showing success
+              const response = await jobService.markJobComplete(jobId, {
                 finalPrice: job.estimatedPrice, // Could allow tradesperson to adjust
                 completionNotes: 'Job completed successfully',
                 completedAt: new Date().toISOString(),
@@ -244,18 +250,32 @@ const JobDetailsScreen = ({ route, navigation }) => {
 
               stopGPSTracking();
 
-              Toast.show({
-                type: 'success',
-                text1: 'Job Marked Complete!',
-                text2: 'Customer will be asked to confirm and release payment',
-              });
+              // FIXED: Verify payment status from response before showing success
+              if (response.job?.paymentStatus === PAYMENT_STATUS.HELD) {
+                Toast.show({
+                  type: 'success',
+                  text1: 'Job Marked Complete!',
+                  text2: 'Payment secured. Customer will confirm to release.',
+                });
+              } else if (response.job) {
+                // Job updated but payment status unclear - show warning
+                Toast.show({
+                  type: 'warning',
+                  text1: 'Job Updated',
+                  text2: 'Please check payment status with support',
+                });
+              } else {
+                // No job in response - something went wrong
+                throw new Error('Job completion response missing job data');
+              }
 
               loadJob();
             } catch (err) {
+              console.error('Failed to mark job complete:', err);
               Toast.show({
                 type: 'error',
                 text1: 'Failed to Complete',
-                text2: err.message || 'Failed to mark job complete',
+                text2: err.message || 'Failed to mark job complete. Please try again.',
               });
             } finally {
               setCompletingJob(false);

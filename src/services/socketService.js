@@ -1,9 +1,10 @@
 import { io } from 'socket.io-client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 /**
  * Socket.io Service
  * Manages real-time communication for messaging, notifications, and live updates
+ * FIXED: Uses SecureStore for tokens and standardized token key
  */
 
 class SocketService {
@@ -25,8 +26,8 @@ class SocketService {
     }
 
     try {
-      // Get auth token
-      const token = await AsyncStorage.getItem('authToken');
+      // FIXED: Get auth token from SecureStore using standardized key 'accessToken'
+      const token = await SecureStore.getItemAsync('accessToken');
       if (!token) {
         console.error('No auth token found for socket connection');
         return;

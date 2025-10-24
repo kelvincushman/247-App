@@ -1,5 +1,5 @@
 import io from 'socket.io-client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { SOCKET_URL } from '../utils/constants';
 import store from '../redux/store';
 
@@ -15,6 +15,7 @@ import {
 /**
  * Socket.io Client
  * Manages real-time bidirectional communication with the backend
+ * FIXED: Uses SecureStore for tokens (hardware-backed encryption)
  */
 
 class SocketClient {
@@ -31,8 +32,8 @@ class SocketClient {
    */
   async connect() {
     try {
-      // Get auth token
-      const token = await AsyncStorage.getItem('accessToken');
+      // FIXED: Get auth token from SecureStore (hardware-backed encryption)
+      const token = await SecureStore.getItemAsync('accessToken');
 
       if (!token) {
         console.log('[Socket] No auth token found, skipping connection');

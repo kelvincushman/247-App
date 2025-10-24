@@ -10,6 +10,7 @@ import {
   REGISTER,
 } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 // Import reducers
 import authReducer from './slices/authSlice';
@@ -20,12 +21,45 @@ import notificationsReducer from './slices/notificationsSlice';
 import locationReducer from './slices/locationSlice';
 
 /**
+ * FIXED: SecureStore adapter for redux-persist
+ * Uses hardware-backed encryption for sensitive auth data
+ */
+const createSecureStorage = () => {
+  return {
+    setItem: async (key, value) => {
+      try {
+        await SecureStore.setItemAsync(key, value);
+      } catch (error) {
+        console.error('SecureStore setItem error:', error);
+        throw error;
+      }
+    },
+    getItem: async (key) => {
+      try {
+        return await SecureStore.getItemAsync(key);
+      } catch (error) {
+        console.error('SecureStore getItem error:', error);
+        return null;
+      }
+    },
+    removeItem: async (key) => {
+      try {
+        await SecureStore.deleteItemAsync(key);
+      } catch (error) {
+        console.error('SecureStore removeItem error:', error);
+      }
+    },
+  };
+};
+
+/**
  * Redux Persist Configuration
- * Persists auth and user data for auto-login
+ * FIXED: Uses SecureStore for auth tokens (hardware-backed encryption)
+ * User data uses AsyncStorage (not sensitive)
  */
 const authPersistConfig = {
   key: 'auth',
-  storage: AsyncStorage,
+  storage: createSecureStorage(), // FIXED: Use SecureStore instead of AsyncStorage
   whitelist: ['token', 'refreshToken', 'isAuthenticated'], // Only persist these fields
 };
 

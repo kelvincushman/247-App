@@ -16,6 +16,56 @@ const initialState = {
 };
 
 /**
+ * FIXED: Sanitize auth error messages to prevent user enumeration
+ * Returns generic messages instead of specific backend errors
+ */
+const sanitizeAuthError = (error) => {
+  const errorMessage = typeof error === 'string' ? error.toLowerCase() : '';
+
+  // Authentication errors - return generic message
+  if (
+    errorMessage.includes('user not found') ||
+    errorMessage.includes('invalid password') ||
+    errorMessage.includes('incorrect password') ||
+    errorMessage.includes('invalid credentials') ||
+    errorMessage.includes('authentication failed') ||
+    errorMessage.includes('login failed')
+  ) {
+    return 'Invalid email or password';
+  }
+
+  // Registration errors - return generic message
+  if (
+    errorMessage.includes('email already exists') ||
+    errorMessage.includes('user already exists') ||
+    errorMessage.includes('email is already registered') ||
+    errorMessage.includes('duplicate')
+  ) {
+    return 'Registration failed. Please check your information and try again';
+  }
+
+  // Email verification errors
+  if (
+    errorMessage.includes('email not verified') ||
+    errorMessage.includes('account not verified')
+  ) {
+    return 'Please verify your email address before logging in';
+  }
+
+  // Account status errors
+  if (
+    errorMessage.includes('account suspended') ||
+    errorMessage.includes('account disabled') ||
+    errorMessage.includes('account locked')
+  ) {
+    return 'Unable to access account. Please contact support';
+  }
+
+  // For all other errors, return a generic message
+  return 'An error occurred. Please try again';
+};
+
+/**
  * Async Thunks
  */
 
@@ -28,7 +78,9 @@ export const login = createAsyncThunk(
       setAuthToken(response.accessToken);
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Login failed');
+      // FIXED: Sanitize error to prevent user enumeration
+      const errorMessage = error.response?.data?.message || 'Login failed';
+      return rejectWithValue(sanitizeAuthError(errorMessage));
     }
   }
 );
@@ -42,7 +94,9 @@ export const registerCustomer = createAsyncThunk(
       setAuthToken(response.accessToken);
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Registration failed');
+      // FIXED: Sanitize error to prevent user enumeration
+      const errorMessage = error.response?.data?.message || 'Registration failed';
+      return rejectWithValue(sanitizeAuthError(errorMessage));
     }
   }
 );
@@ -56,7 +110,9 @@ export const registerTradesperson = createAsyncThunk(
       setAuthToken(response.accessToken);
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Registration failed');
+      // FIXED: Sanitize error to prevent user enumeration
+      const errorMessage = error.response?.data?.message || 'Registration failed';
+      return rejectWithValue(sanitizeAuthError(errorMessage));
     }
   }
 );
